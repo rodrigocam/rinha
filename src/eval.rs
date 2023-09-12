@@ -19,6 +19,27 @@ impl Interpreter {
 
     pub fn eval_expr(&mut self, expr: Term) -> Value {
         match expr {
+            Term::Tuple(t) => {
+                return Value::Tuple(
+                    Box::new(self.eval_expr(*t.first)),
+                    Box::new(self.eval_expr(*t.second)),
+                )
+            }
+            Term::First(f) => {
+                let v = self.eval_expr(*f.value);
+                match v {
+                    Value::Tuple(a, _) => return *a,
+                    _ => panic!("Called `first` on a non tuple value"),
+                }
+            }
+            Term::Second(s) => {
+                let v = self.eval_expr(*s.value);
+                match v {
+                    Value::Tuple(_, b) => return *b,
+                    _ => panic!("Called `second` on a non tuple value"),
+                }
+            }
+
             Term::If(i) => {
                 if self.eval_expr(*i.condition).to_bool() {
                     return self.eval_expr(*i.then);
@@ -104,6 +125,7 @@ pub enum Value {
     Int(i32),
     Str(String),
     Bool(bool),
+    Tuple(Box<Value>, Box<Value>),
     Nil,
 }
 
@@ -113,6 +135,7 @@ impl Value {
             Value::Int(_) => return true,
             Value::Str(_) => return false,
             Value::Bool(_) => return false,
+            Value::Tuple(_, _) => return false,
             Value::Nil => false,
         }
     }
@@ -122,6 +145,7 @@ impl Value {
             Value::Int(i) => *i,
             Value::Str(_) => panic!("Could not convert string to int"),
             Value::Bool(_) => panic!("Could not convert bool to int"),
+            Value::Tuple(_, _) => panic!("Could not convert tuple to int"),
             Value::Nil => panic!("Could not convert nil to int"),
         }
     }
@@ -131,15 +155,17 @@ impl Value {
             Value::Int(i) => *i != 0,
             Value::Str(s) => s != "",
             Value::Bool(b) => *b,
+            Value::Tuple(_, _) => false,
             Value::Nil => false,
         }
     }
 
     pub fn is_string(&self) -> bool {
         match self {
-            Value::Int(_) => return false,
-            Value::Str(_) => return true,
-            Value::Bool(_) => return false,
+            Value::Int(_) => false,
+            Value::Str(_) => true,
+            Value::Bool(_) => false,
+            Value::Tuple(_, _) => false,
             Value::Nil => false,
         }
     }
@@ -149,6 +175,7 @@ impl Value {
             Value::Int(i) => return format!("{}", i),
             Value::Str(s) => return format!("{}", s),
             Value::Bool(b) => return format!("{}", b),
+            Value::Tuple(a, b) => return format!("({},{})", a.to_string(), b.to_string()),
             Value::Nil => return format!(""),
         }
     }
